@@ -1,0 +1,38 @@
+INFO     common.recordlog:sendrequest.py:135 接口名称：用户登录
+INFO     common.recordlog:sendrequest.py:136 请求地址：http://127.0.0.1:8787/dar/user/login
+INFO     common.recordlog:sendrequest.py:137 请求方式：post
+INFO     common.recordlog:sendrequest.py:138 测试用例名称：用户名和密码正确登录验证
+INFO     common.recordlog:sendrequest.py:139 请求头：{'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'}
+INFO     common.recordlog:sendrequest.py:140 Cookie：None
+INFO     common.recordlog:sendrequest.py:144 请求参数：{'data': {'user_name': 'test01', 'passwd': 'admin123'}}
+INFO     common.recordlog:sendrequest.py:108 接口返回信息：{
+  "error_code": null,
+  "msg": "登录成功",
+  "msg_code": 200,
+  "token": "0115930862970452224"
+}
+
+INFO     common.recordlog:apiutil.py:166 json提取到参数：{'token': '0115930862970452224'}
+INFO     common.recordlog:assertions.py:166 yaml文件预期结果：[{'contains': {'error_code': 'none'}}, {'eq': {'msg': '登录成功'}}]
+INFO     common.recordlog:assertions.py:45 字符串包含断言成功：预期结果【None】,实际结果【[None]】
+INFO     common.recordlog:assertions.py:70 相等断言成功：接口实际结果：{'msg': '登录成功'}，等于预期结果：{'msg': '登录成功'}
+INFO     common.recordlog:assertions.py:189 测试成功
+INFO     common.recordlog:test_debug_api.py:14 环境初始化....
+INFO     common.recordlog:conftest.py:20 -------------接口测试开始--------------
+INFO     common.recordlog:sendrequest.py:135 接口名称：新增用户
+INFO     common.recordlog:sendrequest.py:136 请求地址：http://127.0.0.1:8787/dar/user/addUser
+INFO     common.recordlog:sendrequest.py:137 请求方式：POST
+INFO     common.recordlog:sendrequest.py:138 测试用例名称：正常新增用户
+INFO     common.recordlog:sendrequest.py:139 请求头：{'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'}
+INFO     common.recordlog:sendrequest.py:140 Cookie：None
+INFO     common.recordlog:sendrequest.py:144 请求参数：{'data': {'username': 'testadduser', 'password': 'tset6789890', 'role_id': 123456789, 'dates': '2023-12-31', 'phone': 13800000000, 'token': '0115930862970452224'}}
+INFO     common.recordlog:sendrequest.py:108 接口返回信息：{
+  "error_code": null,
+  "msg": "新增成功",
+  "msg_code": 200
+}
+
+INFO     common.recordlog:assertions.py:166 yaml文件预期结果：[{'contains': {'status_code': 200}}, {'contains': {'msg': '新增成功'}}]
+INFO     common.recordlog:assertions.py:45 字符串包含断言成功：预期结果【新增成功】,实际结果【新增成功】
+INFO     common.recordlog:assertions.py:189 测试成功
+INFO     common.recordlog:conftest.py:22 -------------接口测试结束--------------

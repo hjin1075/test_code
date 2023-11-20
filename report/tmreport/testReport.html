@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>tmreport</title>
+  <meta charset="UTF-8">
+  <!-- import CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+<!--  <script src="echarts.min.js"></script>-->
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/echarts@5.1.2/dist/echarts.min.js"></script>
+   <!--导入js库-->
+  <script src="https://cdn.bootcss.com/ace/1.2.6/ace.js" type="text/javascript" charset="utf-8"></script>
+</head>
+<body>
+  <div id="app">
+    <el-container>
+      <el-header>
+        <h2 class="el-icon-document-copy">自动化测试报告</h2>
+      </el-header>
+      <el-container>
+        <el-aside width="500px" style="margin-top: 20px">
+          <el-card shadow="hover" style=";margin-bottom: 20px">
+            <h3>执行成功率</h3>
+            <div id="main" style="width: 500px;height:430px"></div>
+          </el-card>
+          <el-card shadow="hover">
+            <div id="main2" style="width: 500px;height:430px;"></div>
+          </el-card>
+        </el-aside>
+        <el-main>
+           <el-row>
+             <el-col :span="7">
+                <el-card shadow="hover">
+                  <span style="font-size: small ">本次执行情况</span>
+                   <el-tag type="primary" label="执行结果" effect="dark" style="float: right" size="small">执行</el-tag>
+                  <el-divider></el-divider>
+                  <span style="font-size: large; color: dodgerblue">本次共执行用例 {{summary.total}} 条</span>
+                  <el-divider></el-divider>
+                  <span style="font-size: small ">成功率 {{(summary.success_rate * 100).toFixed(2)}}% </span>
+                </el-card>
+             </el-col>
+             <el-col :span="7">
+                <el-card shadow="hover">
+                  <span style="font-size: small ">异常情况</span>
+                   <el-tag type="danger" label="执行结果" effect="dark" style="float: right" size="small">异常</el-tag>
+                  <el-divider></el-divider>
+                  <span style="font-size: large; color: indianred">本次共有失败用例 {{summary.failed}} 条</span>
+                  <el-divider></el-divider>
+                  <span style="font-size: small ">失败率 {{(summary.fail_rate * 100).toFixed(2)}}% </span>
+                </el-card>
+             </el-col>
+             <el-col :span="7">
+                <el-card shadow="hover">
+                  <span style="font-size: small ">持续执行</span>
+                   <el-tag type="warning" label="执行结果" effect="dark" style="float: right" size="small">持续</el-tag>
+                  <el-divider></el-divider>
+                  <span style="font-size: large; color: #e6a23c">本次持续运行 {{summary.duration.toFixed(4)}}s</span>
+                  <el-divider></el-divider>
+                  <span style="font-size: small ">平均Case执行时间 {{(summary.avg_duration * 1000).toFixed(2)}} ms</span>
+                </el-card>
+             </el-col>
+           </el-row>
+           <el-card shadow="hover" style="margin-top: 20px">
+             <h3>用例执行记录</h3>
+             <el-alert
+                     class="el-icon-info"
+                    title="点击可展开下方详细日志"
+                    type="warning"
+                    effect="dark">
+              </el-alert>
+              <el-table
+                :data="data.slice((currentPage-1)*pageSize,currentPage*pageSize)"
+                stripe
+                style="width: 100%"
+                height="600"
+                size="medium"
+                @expand-change="expend"
+                :row-key='getRowKeys'
+                :expand-row-keys="expands"
+                @filter-change="fliterChange"
+              >
+                 <el-table-column type="expand"  width="100" prop="logs">
+                  <template slot-scope="scope">
+                      <el-card class="content">
+                          <pre id="editor" class="ace_editor" style="min-height:400px">
+                            <textarea class="ace_text-input">{{scope.row.logs}}</textarea>
+                          </pre>
+                          <script type="application/javascript">
+                            var editor = ace.edit('editor')
+                              //设置风格和语言（更多风格和语言，请到github上相应目录查看）
+                            theme = "clouds"
+                            language = "python"
+                            editor.setTheme("ace/theme/" + theme);
+                            editor.session.setMode("ace/mode/" + language);
+
+                            //字体大小
+                            editor.setFontSize(10);
+
+                            //设置只读（true时只读，用于展示代码）
+                            editor.setReadOnly(true);
+
+                            //自动换行,设置为off关闭
+                            editor.setOption("wrap", "free")
+
+                          </script>
+                      </el-card>
+                     </template>
+                  </el-table-column>
+                <el-table-column
+                  label="ID"
+                  type="index"
+                  :index="count"
+                  width="80"
+                >
+                </el-table-column>
+                <el-table-column
+                  prop="title"
+                  label="Case"
+                  width="300"
+                >
+                </el-table-column>
+
+                <el-table-column
+                  prop="time"
+                  label="Time"
+                  width="200">
+                </el-table-column>
+                <el-table-column
+                  prop="result"
+                  label="Result"
+                  :filters="[{ text: '成功', value: 1 }, { text: '失败', value: 0 }]"
+                  column-key="result"
+                  width="100"
+                >
+                  <template slot-scope="scope">
+                    <i class="el-icon-circle-check" style="color: green;font-size: large" v-if="scope.row.result==1"></i>
+                    <i class="el-icon-circle-close" style="color: red;font-size: large" v-if="scope.row.result==0"></i>
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  prop="doc"
+                  label="Doc"
+                  width="250">
+                </el-table-column>
+                <el-table-column
+                  prop="duration"
+                  label="Duration"
+                  width="150">
+                  <template slot-scope="scope">
+                    <span>{{(scope.row.duration*1000).toFixed(2)}} ms</span>
+                  </template>
+                </el-table-column>
+
+              </el-table>
+               <div class="block" style="margin-top: 20px">
+                    <el-pagination
+                      @size-change="handleSizeChange"
+                      @current-change="handleCurrentChange"
+                      :current-page="currentPage"
+                      :page-sizes="[10, 20, 50, 100]"
+                      :page-size="pageSize"
+                      layout="total, sizes, prev, pager, next, jumper"
+                      :total="data.length">
+                    </el-pagination>
+                  </div>
+           </el-card>
+        </el-main>
+      </el-container>
+    </el-container>
+  </div>
+</body>
+
+  <!-- import Vue before Element -->
+  <script src="https://cdn.jsdelivr.net/npm/vue@2.7.8/dist/vue.js"></script>
+  <!-- import JavaScript -->
+  <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+
+
+  <script>
+
+    new Vue({
+      el: '#app',
+      data: function() {
+        return {
+          visible: false,
+          dialogVisible: false,
+          data: [],
+          tableData: [{'id': 1680514253.7876067, 'title': 'testcase/publicApi/test_public_api.py::TestPublicApi::test_login_true[case_info0]', 'logs': 'Captured log setup\nINFO     common.recordlog:connection.py:35 成功连接到mysql---\n            host：172.17.46.99\n            port：3306\n            db：zqsjfx\n            \nINFO     common.recordlog:sendrequest.py:135 接口名称：用户登录\nINFO     common.recordlog:sendrequest.py:136 请求地址：https://zqsjfxtest.sinoiov.cn/dars/doLogin\nINFO     common.recordlog:sendrequest.py:137 请求方式：post\nINFO     common.recordlog:sendrequest.py:138 测试用例名称：用户名和密码正确登录验证\nINFO     common.recordlog:sendrequest.py:139 请求头：{\'Content-Type\': \'application/x-www-form-urlencoded;charset=UTF-8\'}\nINFO     common.recordlog:sendrequest.py:140 Cookie：None\nINFO     common.recordlog:sendrequest.py:144 请求参数：{\'data\': {\'username\': \'admin\', \'password\': \'c82b67810509fe2ac39d92e140d58d25d6b14776\', \'captcha\': None}}\nINFO     common.recordlog:sendrequest.py:107 cookie：{\'Cookie\': {\'csrfToken\': \'4376410514252640845\', \'SESSION\': \'NjI5M2I1YTMtY2UyYS00Y2YyLTk1ZDItNzA1ZDMyYzExOGJj\'}}\nINFO     common.recordlog:sendrequest.py:108 接口返回信息：{"status":"0","errCode":null,"errMsg":null,"data":2}\nINFO     common.recordlog:assertions.py:165 yaml文件预期结果：[{\'contains\': {\'status_code\': 200}}, {\'eq\': {\'data\': 2}}]\nINFO     common.recordlog:assertions.py:69 相等断言成功：接口实际结果：{\'data\': 2}，等于预期结果：{\'data\': 2}\nINFO     common.recordlog:assertions.py:188 测试成功\nINFO     common.recordlog:conftest.py:20 -------------接口测试开始--------------\nCaptured log call\nINFO     common.recordlog:sendrequest.py:135 接口名称：总销量\nINFO     common.recordlog:sendrequest.py:136 请求地址：https://zqsjfxtest.sinoiov.cn/dars/newVehAddCompSitn/getRgnNewCompSitnSalesVolume\nINFO     common.recordlog:sendrequest.py:137 请求方式：POST\nINFO     common.recordlog:sendrequest.py:138 测试用例名称：计算总销量和增长率\nINFO     common.recordlog:sendrequest.py:139 请求头：{\'Content-Type\': \'application/x-www-form-urlencoded;charset=UTF-8\'}\nINFO     common.recordlog:sendrequest.py:140 Cookie：{\'SESSION\': \'NjI5M2I1YTMtY2UyYS00Y2YyLTk1ZDItNzA1ZDMyYzExOGJj\'}\nINFO     common.recordlog:sendrequest.py:144 请求参数：{\'data\': {\'areaCode\': \'000000\', \'startDateStr\': \'2023-01-01\', \'endDateStr\': \'2023-03-20\'}}\nINFO     common.recordlog:sendrequest.py:108 接口返回信息：{"status":"0","errCode":null,"errMsg":null,"data":{"rgnNewSalesVolumeShare":[{"regional":"福建省","regionalCode":"350000","salesVolume":32,"hisSalesVolume":142,"regionRatio":"0.04","momGrowth":null,"yoyGrowth":"-77.5","regionRatioChange":"-0.13","detail":[{"enterprise":"重汽","vehicleBrand":null,"salesVolume":6,"salesVolumeShare":"18.75"},{"enterprise":"商销","vehicleBrand":"商销","salesVolume":4,"salesVolumeShare":"12.50"},{"enterprise":"卡销","vehicleBrand":"卡销","salesVolume":2,"salesVolumeShare":"6.25"},{"enterprise":"成都王牌","vehicleBrand":"成都王牌","salesVolume":0,"salesVolumeShare":"0.00"},{"enterprise":"豪沃轻卡","vehicleBrand":"豪沃轻卡","salesVolume":0,"salesVolumeShare":"0.00"},{"enterprise":"福建海西","vehicleBrand":"福建海西","salesVolume":0,"salesVolumeShare":"0.00"},{"enterprise":"重汽其他","vehicleBrand":"重汽其他","salesVolume":0,"salesVolumeShare":"0.00"}]},{"regional":"西藏自治区","regionalCode":"540000","salesVolume":24,"hisSalesVolume":22,"regionRatio":"0.03","momGrowth":null,"yoyGrowth":"9.1","regionRatioChange":"0.00","detail":[{"enterprise":"重汽","vehicleBrand":null,"salesVolume":5,"salesVolumeShare":"20.83"},{"enterprise":"商销","vehicleBrand":"商销","salesVolume":2,"salesVolumeShare":"8.33"},{"enterprise":"卡销","vehicleBrand":"卡销","salesVolume":2,"salesVolumeShare":"8.33"},{"enterprise":"成都王牌","vehicleBrand":"成都王牌","salesVolume":0,"salesVolumeShare":"0.00"},{"enterprise":"豪沃轻卡","vehicleBrand":"豪沃轻卡","salesVolume":1,"salesVolumeShare":"4.17"},{"enterprise":"福建海西","vehicleBrand":"福建海西","salesVolume":0,"salesVolumeShare":"0.00"},{"enterprise":"重汽其他","vehicleBrand":"重汽其他","salesVolume":0,"salesVolumeShare":"0.00"}]},{"regional":"贵州省","regionalCode":"520000","salesVolume":564,"hisSalesVolume":627,"regionRatio":"0.63","momGrowth":null,"yoyGrowth":"-10.0","regionRatioChange":"-0.14","detail":[{"enterprise":"重汽","vehicleBrand":null,"salesVolume":76,"salesVolumeShare":"13.48"},{"enterprise":"商销","vehicleBrand":"商销","salesVolume":28,"salesVolumeShare":"4.96"},{"enterprise":"卡销","vehicleBrand":"卡销","salesVolume":26,"salesVolumeShare":"4.61"},{"enterprise":"成都王牌","vehicleBrand":"成都王牌","salesVolume":12,"salesVolumeShare":"2.13"},{"enterprise":"豪沃轻卡","vehicleBrand":"豪沃轻卡","salesVolume":9,"salesVolumeShare":"1.60"},{"enterprise":"福建海西","vehicleBrand":"福建海西","salesVolume":1,"salesVolumeShare":"0.18"},{"enterprise":"重汽其他","vehicleBrand":"重汽其他","salesVolume":0,"salesVolumeShare":"0.00"}]},{"regional":"上海市","regionalCode":"310000","salesVolume":2057,"hisSalesVolume":2295,"regionRatio":"2.29","momGrowth":null,"yoyGrowth":"-10.4","regionRatioChange":"-0.54","detail":[{"enterprise":"重汽","vehicleBrand":null,"salesVolume":457,"salesVolumeShare":"22.22"},{"enterprise":"商销","vehicleBrand":"商销","salesVolume":150,"salesVolumeShare":"7.29"},{"enterprise":"卡销","vehicleBrand":"卡销","salesVolume":297,"salesVolumeShare":"14.44"},{"enterprise":"成都王牌","vehicleBrand":"成都王牌","salesVolume":3,"salesVolumeShare":"0.15"},{"enterprise":"豪沃轻卡","vehicleBrand":"豪沃轻卡","salesVolume":1,"salesVolumeShare":"0.05"},{"enterprise":"福建海西","vehicleBrand":"福建海西","salesVolume":6,"salesVolumeShare":"0.29"},{"enterprise":"重汽其他","vehicleBrand":"重汽其他","salesVolume":0,"salesVolumeShare":"0.00"}]},{"regional":"湖南省","regionalCode":"430000","salesVolume":1110,"hisSalesVolume":1351,"regionRatio":"1.24","momGrowth":null,"yoyGrowth":"-17.8","regionRatioChange":"-0.42","detail":[{"enterprise":"重汽","vehicleBrand":null,"salesVolume":122,"salesVolumeShare":"10.99"},{"enterprise":"商销","vehicleBrand":"商销","salesVolume":27,"salesVolumeShare":"2.43"},{"enterprise":"卡销","vehicleBrand":"卡销","salesVolume":68,"salesVolumeShare":"6.13"},{"enterprise":"成都王牌","vehicleBrand":"成都王牌","salesVolume":7,"salesVolumeShare":"0.63"},{"enterprise":"豪沃轻卡","vehicleBrand":"豪沃轻卡","salesVolume":10,"salesVolumeShare":"0.90"},{"enterprise":"福建海西","vehicleBrand":"福建海西","salesVolume":10,"salesVolumeShare":"0.90"},{"enterprise":"重汽其他","vehicleBrand":"重汽其他","salesVolume":0,"salesVolumeShare":"0.00"}]},{"regional":"广东省","regionalCode":"440000","salesVolume":598,"hisSalesVolume":2010,"regionRatio":"0.67","momGrowth":null,"yoyGrowth":"-70.2","regionRatioChange":"-1.80","detail":[{"enterprise":"重汽","vehicleBrand":null,"salesVolume":180,"salesVolumeShare":"30.10"},{"enterprise":"商销","vehicleBrand":"商销","salesVolume":91,"salesVolumeShare":"15.22"},{"enterprise":"卡销","vehicleBrand":"卡销","salesVolume":79,"salesVolumeShare":"13.21"},{"enterprise":"成都王牌","vehicleBrand":"成都王牌","salesVolume":2,"salesVolumeShare":"0.33"},{"enterprise":"豪沃轻卡","vehicleBrand":"豪沃轻卡","salesVolume":7,"salesVolumeShare":"1.17"},{"enterprise":"福建海西","vehicleBrand":"福建海西","salesVolume":1,"salesVolumeShare":"0.17"},{"enterprise":"重汽其他","vehicleBrand":"重汽其他","salesVolume":0,"salesVolumeShare":"0.00"}]},{"regional":"湖北省","regionalCode":"420000","salesVolume":1966,"hisSalesVolume":1932,"regionRatio":"2.19","momGrowth":null,"yoyGrowth":"1.8","regionRatioChange":"-0.19","detail":[{"enterprise":"重汽","vehicleBrand":null,"salesVolume":162,"salesVolumeShare":"8.24"},{"enterprise":"商销","vehicleBrand":"商销","salesVolume":33,"salesVolumeShare":"1.68"},{"enterprise":"卡销","vehicleBrand":"卡销","salesVolume":91,"salesVolumeShare":"4.63"},{"enterprise":"成都王牌","vehicleBrand":"成都王牌","salesVolume":25,"salesVolumeShare":"1.27"},{"enterprise":"豪沃轻卡","vehicleBrand":"豪沃轻卡","salesVolume":9,"salesVolumeShare":"0.46"},{"enterprise":"福建海西","vehicleBrand":"福建海西","salesVolume":4,"salesVolumeShare":"0.20"},{"enterprise":"重汽其他","vehicleBrand":"重汽其他","salesVolume":0,"salesVolumeShare":"0.00"}]},{"regional":"安徽省","regionalCode":"340000","salesVolume":5233,"hisSalesVolume":4163,"regionRatio":"5.83","momGrowth":null,"yoyGrowth":"25.7","regionRatioChange":"0.70","detail":[{"enterprise":"重汽","vehicleBrand":null,"salesVolume":766,"salesVolumeShare":"14.64"},{"enterprise":"商销","vehicleBrand":"商销","salesVolume":406,"salesVolumeShare":"7.76"},{"enterprise":"卡销","vehicleBrand":"卡销","salesVolume":335,"salesVolumeShare":"6.40"},{"enterprise":"成都王牌","vehicleBrand":"成都王牌","salesVolume":10,"salesVolumeShare":"0.19"},{"enterprise":"豪沃轻卡","vehicleBrand":"豪沃轻卡","salesVolume":10,"salesVolumeShare":"0.19"},{"enterprise":"福建海西","vehicleBrand":"福建海西","salesVolume":5,"salesVolumeShare":"0.10"},{"enterprise":"重汽其他","vehicleBrand":"重汽其他","salesVolume":0,"salesVolumeShare":"0.00"}]},{"regional":"四川省","regionalCode":"510000","salesVolume":3855,"hisSalesVolume":5300,"regionRatio":"4.29","momGrowth":null,"yoyGrowth":"-27.3","regionRatioChange":"-2.23","detail":[{"enterprise":"重汽","vehicleBrand":null,"salesVolume":669,"salesVolumeShare":"17.35"},{"enterprise":"商销","vehicleBrand":"商销","salesVolume":127,"salesVolumeShare":"3.29"},{"enterprise":"卡销","vehicleBrand":"卡销","salesVolume":340,"salesVolumeShare":"8.82"},{"enterprise":"成都王牌","vehicleBrand":"成都王牌","salesVolume":154,"salesVolumeShare":"3.99"},{"enterprise":"豪沃轻卡","vehicleBrand":"豪沃轻卡","salesVolume":37,"salesVolumeShare":"0.96"},{"enterprise":"福建海西","vehicleBrand":"福建海西","salesVolume":11,"salesVolumeShare":"0.29"},{"enterprise":"重汽其他","vehicleBrand":"重汽其他","salesVolume":0,"salesVolumeShare":"0.00"}]},{"regional":"新疆维吾尔自治区","regionalCode":"650000","salesVolume":4644,"hisSalesVolume":3307,"regionRatio":"5.17","momGrowth":null,"yoyGrowth":"40.4","regionRatioChange":"1.10","detail":[{"enterprise":"重汽","vehicleBrand":null,"salesVolume":552,"salesVolumeShare":"11.89"},{"enterprise":"商销","vehicleBrand":"商销","salesVolume":259,"salesVolumeShare":"5.58"},{"enterprise":"卡销","vehicleBrand":"卡销","salesVolume":250,"salesVolumeShare":"5.38"},{"enterprise":"成都王牌","vehicleBrand":"成都王牌","salesVolume":29,"salesVolumeShare":"0.62"},{"enterprise":"豪沃轻卡","vehicleBrand":"豪沃轻卡","salesVolume":14,"salesVolumeShare":"0.30"},{"enterprise":"福建海西","vehicleBrand":"福建海西","salesVolume":0,"salesVolumeShare":"0.00"},{"enterprise":"重汽其他","vehicleBrand":"重汽其他","salesVolume":0,"salesVolumeShare":"0.00"}]},{"regional":"江苏省","regionalCode":"320000","salesVolume":7082,"hisSalesVolume":6954,"regionRatio":"7.89","momGrowth":null,"yoyGrowth":"1.8","regionRatioChange":"-0.67","detail":[{"enterprise":"重汽","vehicleBrand":null,"salesVolume":1479,"salesVolumeShare":"20.88"},{"enterprise":"商销","vehicleBrand":"商销","salesVolume":560,"salesVolumeShare":"7.91"},{"enterprise":"卡销","vehicleBrand":"卡销","salesVolume":869,"salesVolumeShare":"12.27"},{"enterprise":"成都王牌","vehicleBrand":"成都王牌","salesVolume":4,"salesVolumeShare":"0.06"},{"enterprise":"豪沃轻卡","vehicleBrand":"豪沃轻卡","salesVolume":14,"salesVolumeShare":"0.20"},{"enterprise":"福建海西","vehicleBrand":"福建海西","salesVolume":32,"salesVolumeShare":"0.45"},{"enterprise":"重汽其他","vehicleBrand":"重汽其他","salesVolume":0,"salesVolumeShare":"0.00"}]},{"regional":"吉林省","regionalCode":"220000","salesVolume":715,"hisSalesVolume":694,"regionRatio":"0.80","momGrowth":null,"yoyGrowth":"3.0","regionRatioChange":"-0.05","detail":[{"enterprise":"重汽","vehicleBrand":null,"salesVolume":71,"salesVolumeShare":"9.93"},{"enterprise":"商销","vehicleBrand":"商销","salesVolume":30,"salesVolumeShare":"4.20"},{"enterprise":"卡销","vehicleBrand":"卡销","salesVolume":39,"salesVolumeShare":"5.45"},{"enterprise":"成都王牌","vehicleBrand":"成都王牌","salesVolume":0,"salesVolumeShare":"0.00"},{"enterprise":"豪沃轻卡","vehicleBrand":"豪沃轻卡","salesVolume":2,"salesVolumeShare":"0.28"},{"enterprise":"福建海西","vehicleBrand":"福建海西","salesVolume":0,"salesVolumeShare":"0.00"},{"enterprise":"重汽其他","vehicleBrand":"重汽其他","salesVolume":0,"salesVolumeShare":"0.00"}]},{"regional":"宁夏回族自治区","regionalCode":"640000","salesVolume":1730,"hisSalesVolume":1028,"regionRatio":"1.93","momGrowth":null,"yoyGrowth":"68.3","regionRatioChange":"0.66","detail":[{"enterprise":"重汽","vehicleBrand":null,"salesVolume":163,"salesVolumeShare":"9.42"},{"enterprise":"商销","vehicleBrand":"商销","salesVolume":31,"salesVolumeShare":"1.79"},{"enterprise":"卡销","vehicleBrand":"卡销","salesVolume":131,"salesVolumeShare":"7.57"},{"enterprise":"成都王牌","vehicleBrand":"成都王牌","salesVolume":0,"salesVolumeShare":"0.00"},{"enterprise":"豪沃轻卡","vehicleBrand":"豪沃轻卡","salesVolume":1,"salesVolumeShare":"0.06"},{"enterprise":"福建海西","vehicleBrand":"福建海西","salesVolume":0,"salesVolumeShare":"0.00"},{"enterprise":"重汽其他","vehicleBrand":"重汽其他","salesVolume":0,"salesVolumeShare":"0.00"}]},{"regional":"河南省","regionalCode":"410000","salesVolume":6598,"hisSalesVolume":4771,"regionRatio":"7.35","momGrowth":null,"yoyGrowth":"38.3","regionRatioChange":"1.48","detail":[{"enterprise":"重汽","vehicleBrand":null,"salesVolume":915,"salesVolumeShare":"13.87"},{"enterprise":"商销","vehicleBrand":"商销","salesVolume":420,"salesVolumeShare":"6.37"},{"enterprise":"卡销","vehicleBrand":"卡销","salesVolume":450,"salesVolumeShare":"6.82"},{"enterprise":"成都王牌","vehicleBrand":"成都王牌","salesVolume":22,"salesVolumeShare":"0.33"},{"enterprise":"豪沃轻卡","vehicleBrand":"豪沃轻卡","salesVolume":12,"salesVolumeShare":"0.18"},{"enterprise":"福建海西","vehicleBrand":"福建海西","salesVolume":11,"salesVolumeShare":"0.17"},{"enterprise":"重汽其他","vehicleBrand":"重汽其他","salesVolume":0,"salesVolumeShare":"0.00"}]},{"regional":"河北省","regionalCode":"130000","salesVolume":16152,"hisSalesVolume":14076,"regionRatio":"17.99","momGrowth":null,"yoyGrowth":"14.7","regionRatioChange":"0.66","detail":[{"enterprise":"重汽","vehicleBrand":null,"salesVolume":2457,"salesVolumeShare":"15.21"},{"enterprise":"商销","vehicleBrand":"商销","salesVolume":381,"salesVolumeShare":"2.36"},{"enterprise":"卡销","vehicleBrand":"卡销","salesVolume":1942,"salesVolumeShare":"12.02"},{"enterprise":"成都王牌","vehicleBrand":"成都王牌","salesVolume":20,"salesVolumeShare":"0.12"},{"enterprise":"豪沃轻卡","vehicleBrand":"豪沃轻卡","salesVolume":94,"salesVolumeShare":"0.58"},{"enterprise":"福建海西","vehicleBrand":"福建海西","salesVolume":20,"salesVolumeShare":"0.12"},{"enterprise":"重汽其他","vehicleBrand":"重汽其他","salesVolume":0,"salesVolumeShare":"0.00"}]},{"regional":"广西壮族自治区","regionalCode":"450000","salesVolume":889,"hisSalesVolume":1093,"regionRatio":"0.99","momGrowth":null,"yoyGrowth":"-18.7","regionRatioChange":"-0.36","detail":[{"enterprise":"重汽","vehicleBrand":null,"salesVolume":115,"salesVolumeShare":"12.94"},{"enterprise":"商销","vehicleBrand":"商销","salesVolume":45,"salesVolumeShare":"5.06"},{"enterprise":"卡销","vehicleBrand":"卡销","salesVolume":55,"salesVolumeShare":"6.19"},{"enterprise":"成都王牌","vehicleBrand":"成都王牌","salesVolume":0,"salesVolumeShare":"0.00"},{"enterprise":"豪沃轻卡","vehicleBrand":"豪沃轻卡","salesVolume":9,"salesVolumeShare":"1.01"},{"enterprise":"福建海西","vehicleBrand":"福建海西","salesVolume":6,"salesVolumeShare":"0.67"},{"enterprise":"重汽其他","vehicleBrand":"重汽其他","salesVolume":0,"salesVolumeShare":"0.00"}]},{"regional":"海南省","regionalCode":"460000","salesVolume":313,"hisSalesVolume":330,"regionRatio":"0.35","momGrowth":null,"yoyGrowth":"-5.2","regionRatioChange":"-0.06","detail":[{"enterprise":"重汽","vehicleBrand":null,"salesVolume":36,"salesVolumeShare":"11.50"},{"enterprise":"商销","vehicleBrand":"商销","salesVolume":13,"salesVolumeShare":"4.15"},{"enterprise":"卡销","vehicleBrand":"卡销","salesVolume":22,"salesVolumeShare":"7.03"},{"enterprise":"成都王牌","vehicleBrand":"成都王牌","salesVolume":1,"salesVolumeShare":"0.32"},{"enterprise":"豪沃轻卡","vehicleBrand":"豪沃轻卡","salesVolume":0,"salesVolumeShare":"0.00"},{"enterprise":"福建海西","vehicleBrand":"福建海西","salesVolume":0,"salesVolumeShare":"0.00"},{"enterprise":"重汽其他","vehicleBrand":"重汽其他","salesVolume":0,"salesVolumeShare":"0.00"}]},{"regional":"江西省","regionalCode":"360000","salesVolume":1002,"hisSalesVolume":2204,"regionRatio":"1.12","momGrowth":null,"yoyGrowth":"-54.5","regionRatioChange":"-1.59","detail":[{"enterprise":"重汽","vehicleBrand":null,"salesVolume":95,"salesVolumeShare":"9.48"},{"enterprise":"商销","vehicleBrand":"商销","salesVolume":25,"salesVolumeShare":"2.50"},{"enterprise":"卡销","vehicleBrand":"卡销","salesVolume":65,"salesVolumeShare":"6.49"},{"enterprise":"成都王牌","vehicleBrand":"成都王牌","salesVolume":0,"salesVolumeShare":"0.00"},{"enterprise":"豪沃轻卡","vehicleBrand":"豪沃轻卡","salesVolume":1,"salesVolumeShare":"0.10"},{"enterprise":"福建海西","vehicleBrand":"福建海西","salesVolume":4,"salesVolumeShare":"0.40"},{"enterprise":"重汽其他","vehicleBrand":"重汽其他","salesVolume":0,"salesVolumeShare":"0.00"}]},{"regional":"重庆市","regionalCode":"500000","salesVolume":1117,"hisSalesVolume":752,"regionRatio":"1.24","momGrowth":null,"yoyGrowth":"48.5","regionRatioChange":"0.31","detail":[{"enterprise":"重汽","vehicleBrand":null,"salesVolume":142,"salesVolumeShare":"12.71"},{"enterprise":"商销","vehicleBrand":"商销","salesVolume":27,"salesVolumeShare":"2.42"},{"enterprise":"卡销","vehicleBrand":"卡销","salesVolume":83,"salesVolumeShare":"7.43"},{"enterprise":"成都王牌","vehicleBrand":"成都王牌","salesVolume":14,"salesVolumeShare":"1.25"},{"enterprise":"豪沃轻卡","vehicleBrand":"豪沃轻卡","salesVolume":16,"salesVolumeShare":"1.43"},{"enterprise":"福建海西","vehicleBrand":"福建海西","salesVolume":2,"salesVolumeShare":"0.18"},{"enterprise":"重汽其他","vehicleBrand":"重汽其他","salesVolume":0,"salesVolumeShare":"0.00"}]},{"regional":"云南省","regionalCode":"530000","salesVolume":1112,"hisSalesVolume":1239,"regionRatio":"1.24","momGrowth":null,"yoyGrowth":"-10.3","regionRatioChange":"-0.29","detail":[{"enterprise":"重汽","vehicleBrand":null,"salesVolume":242,"salesVolumeShare":"21.76"},{"enterprise":"商销","vehicleBrand":"商销","salesVolume":109,"salesVolumeShare":"9.80"},{"enterprise":"卡销","vehicleBrand":"卡销","salesVolume":109,"salesVolumeShare":"9.80"},{"enterprise":"成都王牌","vehicleBrand":"成都王牌","salesVolume":2,"salesVolumeShare":"0.18"},{"enterprise":"豪沃轻卡","vehicleBrand":"豪沃轻卡","salesVolume":9,"salesVolumeShare":"0.81"},{"enterprise":"福建海西","vehicleBrand":"福建海西","salesVolume":13,"salesVolumeShare":"1.17"},{"enterprise":"重汽其他","vehicleBrand":"重汽其他","salesVolume":0,"salesVolumeShare":"0.00"}]},{"regional":"北京市","regionalCode":"110000","salesVolume":805,"hisSalesVolume":1548,"regionRatio":"0.90","momGrowth":null,"yoyGrowth":"-48.0","regionRatioChange":"-1.01","detail":[{"enterprise":"重汽","vehicleBrand":null,"salesVolume":171,"salesVolumeShare":"21.24"},{"enterprise":"商销","vehicleBrand":"商销","salesVolume":69,"salesVolumeShare":"8.57"},{"enterprise":"卡销","vehicleBrand":"卡销","salesVolume":96,"salesVolumeShare":"11.93"},{"enterprise":"成都王牌","vehicleBrand":"成都王牌","salesVolume":0,"salesVolumeShare":"0.00"},{"enterprise":"豪沃轻卡","vehicleBrand":"豪沃轻卡","salesVolume":6,"salesVolumeShare":"0.75"},{"enterprise":"福建海西","vehicleBrand":"福建海西","salesVolume":0,"salesVolumeShare":"0.00"},{"enterprise":"重汽其他","vehicleBrand":"重汽其他","salesVolume":0,"salesVolumeShare":"0.00"}]},{"regional":"甘肃省","regionalCode":"620000","salesVolume":1169,"hisSalesVolume":996,"regionRatio":"1.30","momGrowth":null,"yoyGrowth":"17.4","regionRatioChange":"0.07","detail":[{"enterprise":"重汽","vehicleBrand":null,"salesVolume":176,"salesVolumeShare":"15.06"},{"enterprise":"商销","vehicleBrand":"商销","salesVolume":92,"salesVolumeShare":"7.87"},{"enterprise":"卡销","vehicleBrand":"卡销","salesVolume":72,"salesVolumeShare":"6.16"},{"enterprise":"成都王牌","vehicleBrand":"成都王牌","salesVolume":5,"salesVolumeShare":"0.43"},{"enterprise":"豪沃轻卡","vehicleBrand":"豪沃轻卡","salesVolume":7,"salesVolumeShare":"0.60"},{"enterprise":"福建海西","vehicleBrand":"福建海西","salesVolume":0,"salesVolumeShare":"0.00"},{"enterprise":"重汽其他","vehicleBrand":"重汽其他","salesVolume":0,"salesVolumeShare":"0.00"}]},{"regional":"陕西省","regionalCode":"610000","salesVolume":1780,"hisSalesVolume":1719,"regionRatio":"1.98","momGrowth":null,"yoyGrowth":"3.5","regionRatioChange":"-0.14","detail":[{"enterprise":"重汽","vehicleBrand":null,"salesVolume":194,"salesVolumeShare":"10.90"},{"enterprise":"商销","vehicleBrand":"商销","salesVolume":35,"salesVolumeShare":"1.97"},{"enterprise":"卡销","vehicleBrand":"卡销","salesVolume":109,"salesVolumeShare":"6.12"},{"enterprise":"成都王牌","vehicleBrand":"成都王牌","salesVolume":20,"salesVolumeShare":"1.12"},{"enterprise":"豪沃轻卡","vehicleBrand":"豪沃轻卡","salesVolume":15,"salesVolumeShare":"0.84"},{"enterprise":"福建海西","vehicleBrand":"福建海西","salesVolume":15,"salesVolumeShare":"0.84"},{"enterprise":"重汽其他","vehicleBrand":"重汽其他","salesVolume":0,"salesVolumeShare":"0.00"}]},{"regional":"山东省","regionalCode":"370000","salesVolume":12918,"hisSalesVolume":9905,"regionRatio":"14.38","momGrowth":null,"yoyGrowth":"30.4","regionRatioChange":"2.19","detail":[{"enterprise":"重汽","vehicleBrand":null,"salesVolume":2672,"salesVolumeShare":"20.68"},{"enterprise":"商销","vehicleBrand":"商销","salesVolume":824,"salesVolumeShare":"6.38"},{"enterprise":"卡销","vehicleBrand":"卡销","salesVolume":1739,"salesVolumeShare":"13.46"},{"enterprise":"成都王牌","vehicleBrand":"成都王牌","salesVolume":11,"salesVolumeShare":"0.09"},{"enterprise":"豪沃轻卡","vehicleBrand":"豪沃轻卡","salesVolume":68,"salesVolumeShare":"0.53"},{"enterprise":"福建海西","vehicleBrand":"福建海西","salesVolume":29,"salesVolumeShare":"0.22"},{"enterprise":"重汽其他","vehicleBrand":"重汽其他","salesVolume":1,"salesVolumeShare":"0.01"}]},{"regional":"浙江省","regionalCode":"330000","salesVolume":1483,"hisSalesVolume":2574,"regionRatio":"1.65","momGrowth":null,"yoyGrowth":"-42.4","regionRatioChange":"-1.52","detail":[{"enterprise":"重汽","vehicleBrand":null,"salesVolume":253,"salesVolumeShare":"17.06"},{"enterprise":"商销","vehicleBrand":"商销","salesVolume":90,"salesVolumeShare":"6.07"},{"enterprise":"卡销","vehicleBrand":"卡销","salesVolume":156,"salesVolumeShare":"10.52"},{"enterprise":"成都王牌","vehicleBrand":"成都王牌","salesVolume":2,"salesVolumeShare":"0.13"},{"enterprise":"豪沃轻卡","vehicleBrand":"豪沃轻卡","salesVolume":3,"salesVolumeShare":"0.20"},{"enterprise":"福建海西","vehicleBrand":"福建海西","salesVolume":2,"salesVolumeShare":"0.13"},{"enterprise":"重汽其他","vehicleBrand":"重汽其他","salesVolume":0,"salesVolumeShare":"0.00"}]},{"regional":"内蒙古自治区","regionalCode":"150000","salesVolume":1717,"hisSalesVolume":1168,"regionRatio":"1.91","momGrowth":null,"yoyGrowth":"47.0","regionRatioChange":"0.47","detail":[{"enterprise":"重汽","vehicleBrand":null,"salesVolume":223,"salesVolumeShare":"12.99"},{"enterprise":"商销","vehicleBrand":"商销","salesVolume":135,"salesVolumeShare":"7.86"},{"enterprise":"卡销","vehicleBrand":"卡销","salesVolume":80,"salesVolumeShare":"4.66"},{"enterprise":"成都王牌","vehicleBrand":"成都王牌","salesVolume":2,"salesVolumeShare":"0.12"},{"enterprise":"豪沃轻卡","vehicleBrand":"豪沃轻卡","salesVolume":5,"salesVolumeShare":"0.29"},{"enterprise":"福建海西","vehicleBrand":"福建海西","salesVolume":1,"salesVolumeShare":"0.06"},{"enterprise":"重汽其他","vehicleBrand":"重汽其他","salesVolume":0,"salesVolumeShare":"0.00"}]},{"regional":"青海省","regionalCode":"630000","salesVolume":514,"hisSalesVolume":354,"regionRatio":"0.57","momGrowth":null,"yoyGrowth":"45.2","regionRatioChange":"0.13","detail":[{"enterprise":"重汽","vehicleBrand":null,"salesVolume":80,"salesVolumeShare":"15.56"},{"enterprise":"商销","vehicleBrand":"商销","salesVolume":27,"salesVolumeShare":"5.25"},{"enterprise":"卡销","vehicleBrand":"卡销","salesVolume":44,"salesVolumeShare":"8.56"},{"enterprise":"成都王牌","vehicleBrand":"成都王牌","salesVolume":2,"salesVolumeShare":"0.39"},{"enterprise":"豪沃轻卡","vehicleBrand":"豪沃轻卡","salesVolume":7,"salesVolumeShare":"1.36"},{"enterprise":"福建海西","vehicleBrand":"福建海西","salesVolume":0,"salesVolumeShare":"0.00"},{"enterprise":"重汽其他","vehicleBrand":"重汽其他","salesVolume":0,"salesVolumeShare":"0.00"}]},{"regional":"天津市","regionalCode":"120000","salesVolume":849,"hisSalesVolume":953,"regionRatio":"0.95","momGrowth":null,"yoyGrowth":"-10.9","regionRatioChange":"-0.22","detail":[{"enterprise":"重汽","vehicleBrand":null,"salesVolume":189,"salesVolumeShare":"22.26"},{"enterprise":"商销","vehicleBrand":"商销","salesVolume":39,"salesVolumeShare":"4.59"},{"enterprise":"卡销","vehicleBrand":"卡销","salesVolume":148,"salesVolumeShare":"17.43"},{"enterprise":"成都王牌","vehicleBrand":"成都王牌","salesVolume":1,"salesVolumeShare":"0.12"},{"enterprise":"豪沃轻卡","vehicleBrand":"豪沃轻卡","salesVolume":1,"salesVolumeShare":"0.12"},{"enterprise":"福建海西","vehicleBrand":"福建海西","salesVolume":0,"salesVolumeShare":"0.00"},{"enterprise":"重汽其他","vehicleBrand":"重汽其他","salesVolume":0,"salesVolumeShare":"0.00"}]},{"regional":"辽宁省","regionalCode":"210000","salesVolume":2242,"hisSalesVolume":1676,"regionRatio":"2.50","momGrowth":null,"yoyGrowth":"33.8","regionRatioChange":"0.44","detail":[{"enterprise":"重汽","vehicleBrand":null,"salesVolume":502,"salesVolumeShare":"22.39"},{"enterprise":"商销","vehicleBrand":"商销","salesVolume":138,"salesVolumeShare":"6.16"},{"enterprise":"卡销","vehicleBrand":"卡销","salesVolume":349,"salesVolumeShare":"15.57"},{"enterprise":"成都王牌","vehicleBrand":"成都王牌","salesVolume":12,"salesVolumeShare":"0.54"},{"enterprise":"豪沃轻卡","vehicleBrand":"豪沃轻卡","salesVolume":2,"salesVolumeShare":"0.09"},{"enterprise":"福建海西","vehicleBrand":"福建海西","salesVolume":1,"salesVolumeShare":"0.04"},{"enterprise":"重汽其他","vehicleBrand":"重汽其他","salesVolume":0,"salesVolumeShare":"0.00"}]},{"regional":"黑龙江省","regionalCode":"230000","salesVolume":839,"hisSalesVolume":1022,"regionRatio":"0.93","momGrowth":null,"yoyGrowth":"-17.9","regionRatioChange":"-0.33","detail":[{"enterprise":"重汽","vehicleBrand":null,"salesVolume":149,"salesVolumeShare":"17.76"},{"enterprise":"商销","vehicleBrand":"商销","salesVolume":66,"salesVolumeShare":"7.87"},{"enterprise":"卡销","vehicleBrand":"卡销","salesVolume":74,"salesVolumeShare":"8.82"},{"enterprise":"成都王牌","vehicleBrand":"成都王牌","salesVolume":7,"salesVolumeShare":"0.83"},{"enterprise":"豪沃轻卡","vehicleBrand":"豪沃轻卡","salesVolume":2,"salesVolumeShare":"0.24"},{"enterprise":"福建海西","vehicleBrand":"福建海西","salesVolume":0,"salesVolumeShare":"0.00"},{"enterprise":"重汽其他","vehicleBrand":"重汽其他","salesVolume":0,"salesVolumeShare":"0.00"}]},{"regional":"山西省","regionalCode":"140000","salesVolume":8698,"hisSalesVolume":5022,"regionRatio":"9.69","momGrowth":null,"yoyGrowth":"73.2","regionRatioChange":"3.51","detail":[{"enterprise":"重汽","vehicleBrand":null,"salesVolume":553,"salesVolumeShare":"6.36"},{"enterprise":"商销","vehicleBrand":"商销","salesVolume":65,"salesVolumeShare":"0.75"},{"enterprise":"卡销","vehicleBrand":"卡销","salesVolume":463,"salesVolumeShare":"5.32"},{"enterprise":"成都王牌","vehicleBrand":"成都王牌","salesVolume":16,"salesVolumeShare":"0.18"},{"enterprise":"豪沃轻卡","vehicleBrand":"豪沃轻卡","salesVolume":6,"salesVolumeShare":"0.07"},{"enterprise":"福建海西","vehicleBrand":"福建海西","salesVolume":3,"salesVolumeShare":"0.03"},{"enterprise":"重汽其他","vehicleBrand":"重汽其他","salesVolume":0,"salesVolumeShare":"0.00"}]}],"totalSalesVolume":{"regional":null,"regionalCode":null,"salesVolume":89807,"hisSalesVolume":0,"regionRatio":null,"momGrowth":null,"yoyGrowth":"10.6","regionRatioChange":null,"detail":null}}}\nINFO     common.recordlog:assertions.py:165 yaml文件预期结果：[{\'contains\': {\'status_code\': 200}}, {\'eq\': {\'status\': \'0\'}}, {\'contains\': {\'status\': \'0\'}}, {\'ne\': {\'status\': \'1\'}}]\nINFO     common.recordlog:assertions.py:69 相等断言成功：接口实际结果：{\'status\': \'0\'}，等于预期结果：{\'status\': \'0\'}\nINFO     common.recordlog:assertions.py:44 字符串包含断言成功：预期结果【0】,实际结果【0】\nINFO     common.recordlog:assertions.py:94 不相等断言成功：接口实际结果：{\'status\': \'0\'}，不等于预期结果：{\'status\': \'1\'}\nINFO     common.recordlog:assertions.py:188 测试成功\n', 'result': 1, 'duration': 0.9321956000000005, 'doc': '', 'time': '2023-04-03 17:30:53'}, {'id': 1680514254.8632298, 'title': 'testcase/systemManager/test_systemManager_api.py::TestPublicApi::test_add_user[case_info0]', 'logs': 'Captured log setup\nINFO     common.recordlog:test_systemManager_api.py:14 环境初始化....\nINFO     common.recordlog:conftest.py:20 -------------接口测试开始--------------\nCaptured log call\nINFO     common.recordlog:sendrequest.py:135 接口名称：新增用户\nINFO     common.recordlog:sendrequest.py:136 请求地址：https://zqsjfxtest.sinoiov.cn/dars/user/insertUser\nINFO     common.recordlog:sendrequest.py:137 请求方式：POST\nINFO     common.recordlog:sendrequest.py:138 测试用例名称：正常新增用户\nINFO     common.recordlog:sendrequest.py:139 请求头：{\'Content-Type\': \'application/x-www-form-urlencoded;charset=UTF-8\'}\nINFO     common.recordlog:sendrequest.py:140 Cookie：{\'SESSION\': \'NjI5M2I1YTMtY2UyYS00Y2YyLTk1ZDItNzA1ZDMyYzExOGJj\'}\nINFO     common.recordlog:sendrequest.py:144 请求参数：{\'data\': {\'loginName\': \'test999\', \'password\': \'dc10ffcf61a000996863f3216f66d046ccee5c10\', \'name\': \'测试\', \'company\': None, \'mobile\': 13800000000, \'roleId\': 8645338552343514266, \'userValidity\': 1711814400000}}\nINFO     common.recordlog:sendrequest.py:108 接口返回信息：{"status":"0","errCode":null,"errMsg":null,"data":null}\nINFO     common.recordlog:assertions.py:165 yaml文件预期结果：[{\'contains\': {\'status_code\': 200}}, {\'db\': "select * from sys_user su where login_name =\'test999\'"}]\nINFO     common.recordlog:connection.py:35 成功连接到mysql---\n            host：172.17.46.99\n            port：3306\n            db：zqsjfx\n            \nINFO     common.recordlog:assertions.py:149 数据库断言成功\nINFO     common.recordlog:assertions.py:188 测试成功\n', 'result': 1, 'duration': 1.0616893000000003, 'doc': '', 'time': '2023-04-03 17:30:54'}],
+          logs:'',
+          summary: {'total': 2, 'success': 2, 'failed': 0, 'success_rate': 1.0, 'fail_rate': 0.0, 'duration': 1.9938849000000007, 'avg_duration': 0.9969424500000004},
+          expands: [],
+          getRowKeys (row) {
+            return row.id
+          },
+          currentPage: 1,
+            pageSize: 10
+        }
+      },
+      methods:{
+        count(index) {
+            return (this.currentPage - 1) * this.pageSize + index + 1
+        },
+        expend(row, expandedRows){
+            var that = this
+            if (expandedRows.length) {
+              that.expands = []
+              if (row) {
+                that.expands.push(row.id)
+              }
+            } else {
+              that.expands = []
+            }
+        },
+        filterTag(value, row) {
+          return row.result === value;
+        },
+        handleSizeChange(val) {
+            this.pageSize = val;
+          },
+        handleCurrentChange(val) {
+            this.currentPage=val;
+        },
+        fliterChange(filters){
+            const filterskey = filters.result;
+            console.log(filterskey)
+            if (filterskey.length>0) {
+              this.data = this.tableData.filter(data => {
+
+                  return data['result'] === filterskey[0] | data['result'] === filterskey[1];
+              });
+              this.currentPage = 1;
+              return this.data;
+            }
+            this.data = this.tableData;
+            this.currentPage = 1;
+            return this.data
+        },
+      },
+      mounted(){
+        this.data = this.tableData;
+      }
+    })
+  </script>
+
+  <script type="text/javascript">
+
+var chartDom = document.getElementById('main');
+var myChart = echarts.init(chartDom);
+var option;
+
+option = {
+    series: [{
+        type: 'gauge',
+        startAngle: 180,
+        endAngle: 0,
+        min: 0,
+        max: 1,
+        splitNumber: 8,
+        axisLine: {
+            lineStyle: {
+                width: 6,
+                color: [
+                    [0.25, '#FF6E76'],
+                    [0.5, '#FDDD60'],
+                    [0.75, 'darkslateblue'],
+                    [1, '#97cc64']
+                ]
+            }
+        },
+        pointer: {
+            icon: 'path://M12.8,0.7l12,40.1H0.7L12.8,0.7z',
+            length: '12%',
+            width: 20,
+            offsetCenter: [0, '-60%'],
+            itemStyle: {
+                color: 'auto'
+            }
+        },
+        axisTick: {
+            length: 12,
+            lineStyle: {
+                color: 'auto',
+                width: 2
+            }
+        },
+        splitLine: {
+            length: 20,
+            lineStyle: {
+                color: 'auto',
+                width: 5
+            }
+        },
+        axisLabel: {
+            color: '#464646',
+            fontSize: 20,
+            distance: -60,
+            formatter: function (value) {
+                if (value === 0.875) {
+                    return '优';
+                }
+                else if (value === 0.625) {
+                    return '中';
+                }
+                else if (value === 0.375) {
+                    return '良';
+                }
+                else if (value === 0.125) {
+                    return '差';
+                }
+            }
+        },
+        title: {
+            offsetCenter: [0, '-20%'],
+            fontSize: 30
+        },
+        detail: {
+            fontSize: 30,
+            offsetCenter: [0, '30%'],
+            valueAnimation: true,
+            formatter: function (value) {
+                return Math.round(value * 100) + '%';
+            },
+            color: 'auto'
+        },
+        data: [{
+            value: 1.0,
+            name: '执行成功率'
+        }]
+    }]
+};
+
+option && myChart.setOption(option);
+
+</script>
+  <script type="text/javascript">
+    var chartDom = document.getElementById('main2');
+    var myChart = echarts.init(chartDom);
+    var option;
+
+option = {
+    title: {
+        text: '用例执行情况',
+        subtext: '本次执行成功失败比例',
+        left: 'center'
+    },
+    tooltip: {
+        trigger: 'item'
+    },
+    legend: {
+        orient: 'vertical',
+        left: 'left',
+    },
+    series: [
+        {
+            name: '访问来源',
+            type: 'pie',
+            radius: '50%',
+            data: [{'value': 2, 'name': 'Success', 'itemStyle': {'color': '#97cc64'}}, {'value': 0, 'name': 'Failed', 'itemStyle': {'color': '#fd5a3e'}}],
+            emphasis: {
+                itemStyle: {
+                    shadowBlur: 10,
+                    shadowOffsetX: 0,
+                    shadowColor: 'rgba(0, 0, 0, 0.5)'
+                }
+            }
+        }
+    ]
+};
+
+option && myChart.setOption(option);
+</script>
+
+<style>
+  .el-header, .el-footer {
+    background-color: darkslateblue;
+    text-align: center;
+    color: white;
+    /*line-height: 60px;*/
+  }
+
+  .el-col {
+    margin-right: 10px;
+  }
+
+  .el-card{
+    border-radius: 15px;
+  }
+
+  .el-table .cell {
+    white-space: pre-line;
+
+    }
+  /*.el-aside {*/
+  /*  background-color: #D3DCE6;*/
+  /*  color: #333;*/
+  /*  text-align: center;*/
+  /*  line-height: 400px;*/
+  /*}*/
+</style>
+</html>

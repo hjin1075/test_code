@@ -103,7 +103,7 @@ class SendRequest:
             set_cookie = requests.utils.dict_from_cookiejar(result.cookies)
             if set_cookie:
                 cookie['Cookie'] = set_cookie
-                self.read.write_yaml_data(cookie)
+                self.read.write_yaml_data(cookie) # 把cookie存到extract.yaml文件
                 logs.info("cookie：%s" % cookie)
             logs.info("接口返回信息：%s" % result.text if result.text else result)
         except requests.exceptions.ConnectionError:

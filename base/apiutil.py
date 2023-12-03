@@ -122,8 +122,8 @@ class RequestBase(object):
 
                 try:
                     res_json = json.loads(res_text)
-                    if extract is not None:
-                        self.extract_data(extract, res_text)
+                    if extract is not None: # 查看是否有数据需要从返回值中提取
+                        self.extract_data(extract, res_text) # 把接口返回值特定值存入到extract.yaml中
                     if extract_lst is not None:
                         self.extract_data_list(extract_lst, res_text)
                     # 处理断言
@@ -148,6 +148,7 @@ class RequestBase(object):
         pattern_lst = ['(.+?)', '(.*?)', r'(\d+)', r'(\d*)']
         try:
             for key, value in testcase_extract.items():
+                # 处理正则表达式提取
                 for pat in pattern_lst:
                     if pat in value:
                         ext_list = re.search(value, response)
@@ -157,6 +158,7 @@ class RequestBase(object):
                             extract_date = {key: ext_list.group(1)}
                         logs.info('正则提取到的参数：%s' % extract_date)
                         self.read.write_yaml_data(extract_date)
+                # 处理json提取器
                 if "$" in value:
                     ext_json = jsonpath.jsonpath(json.loads(response), value)[0]
                     if ext_json:

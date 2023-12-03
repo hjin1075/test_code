@@ -1,5 +1,10 @@
+import time
+
 import pytest
 import allure
+
+from common.dingRobot import send_dd_msg
+from common.operJenkins import OperJenkins
 from common.readyaml import get_testcase_yaml
 from base.apiutil import RequestBase
 from common.recordlog import logs
@@ -43,3 +48,40 @@ def datadb_init():
     # allure.attach('将测试数据清空', 'fixture后置', allure.attachment_type.TEXT)
 
     pass
+
+def pytest_terminal_summary(terminalreporter,exitstatus,config):
+    """
+     pytest内置的钩子函数，函数名为固定写法不能变更，每次pytest测试完成后，会自动收集测试结果的数据
+    :param terminalreporter: 内部使用的终端测试报告对象
+    :param exitstatus: 返回给操作系统的返回码
+    :param config: pytest配置对象
+    :return:
+    """
+    # 测试用例总数
+    case_total = terminalreporter._numcollected
+    # 测试用例通过数
+    passed = len(terminalreporter.stats.get('passed',[]))
+    # 测试用例失败数
+    failed = len(terminalreporter.stats.get('failed',[]))
+    # 测试用例错误数
+    error = len(terminalreporter.stats.get('error',[]))
+    # 测试用例跳过数
+    skipped = len(terminalreporter.stats.get('skipped',[]))
+    # 测试用例执行时长
+    duration = time.time() - terminalreporter._sessionstarttime
+    # 测试报告的链接
+    oper = OperJenkins()
+    report = oper.get_report_link()
+
+    # 需要发送的消息
+    content = f"""
+        各位好，本次xxx项目的接口自动化测试结果：
+        测试用例总共：{case_total}个
+        通过：{passed}个
+        失败：{failed}个
+        跳过：{skipped}个
+        异常：{error}个
+        测试用例时长：{duration}
+        点击查看测试报告：{report}
+    """
+    send_dd_msg(content_str=content)

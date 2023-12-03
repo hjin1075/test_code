@@ -20,7 +20,7 @@ class Assertions:
 
     def contains_assert(self, value, response, status_code):
         """
-        字符串包含断言模式，断言预期结果的字符串是否包含在接口的响应信息中
+        第一种模式，字符串包含断言模式，断言预期结果的字符串是否包含在接口的响应信息中
         :param value: 预期结果，yaml文件的预期结果值
         :param response: 接口实际响应结果
         :param status_code: 响应状态码
@@ -37,7 +37,7 @@ class Assertions:
                     logs.error("contains断言失败：接口返回码【%s】不等于【%s】" % (status_code, assert_value))
             else:
                 resp_list = jsonpath.jsonpath(response, "$..%s" % assert_key)
-                if isinstance(resp_list[0], str):
+                if isinstance(resp_list[0], str): # 判断是否是str类型
                     resp_list = ''.join(resp_list)
                 if resp_list:
                     assert_value = None if assert_value.upper() == 'NONE' else assert_value

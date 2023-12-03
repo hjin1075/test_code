@@ -1,0 +1,16 @@
+ERROR - 2023-11-27 15:13:28,402 - connection.py:42 -[connection:__init__] - except:name 'conn' is not defined
+INFO - 2023-11-27 15:14:20,891 - connection.py:36 -[connection:__init__] - 成功连接到mysql---
+            host：localhost
+            port：3306
+            db：test_development
+            
+INFO - 2023-11-27 15:26:18,861 - connection.py:35 -[connection:__init__] - 成功连接到mysql---
+            host：localhost
+            port：3306
+            db：cjh_db01
+            
+INFO - 2023-11-27 15:27:39,858 - connection.py:35 -[connection:__init__] - 成功连接到mysql---
+            host：localhost
+            port：3306
+            db：cjh_db01
+            

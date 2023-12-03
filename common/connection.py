@@ -360,3 +360,9 @@ class ConnectSSH(object):
 class ConnectOracle:
     def __init__(self):
         pass
+
+
+if __name__ == '__main__':
+    conn = ConnectMysql()
+    sql = 'select * from product'
+    print(conn.query_all(sql))

@@ -10,3 +10,4 @@
         user_id: 123839387391912
       validation:
         - contains: { 'msg': '删除成功' }
+        - db:

@@ -1,0 +1,6 @@
+ERROR - 2023-12-05 15:36:22,935 - readyaml.py:26 -[readyaml:get_testcase_yaml] - Traceback (most recent call last):
+  File "E:\hub\pythonproject\common\readyaml.py", line 19, in get_testcase_yaml
+    with open(file, 'r', encoding='utf-8') as f:
+FileNotFoundError: [Errno 2] No such file or directory: './testcase/debugApi/addUser.yaml'
+
+ERROR - 2023-12-05 15:36:22,936 - readyaml.py:27 -[readyaml:get_testcase_yaml] - 请检查【./testcase/debugApi/addUser.yaml】文件的数据格式是否正确！

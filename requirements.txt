@@ -1,6 +1,6 @@
 allure_python_commons==2.9.41
 clickhouse_sqlalchemy==0.2.1
-Flask==2.2.2
+Flask==2.3.2
 jsonpath==0.82
 pandas==1.3.4
 paramiko==2.10.3

@@ -31,7 +31,7 @@ def start_test_and_end():
 @allure.story("登录")
 def system_login():
     login_info_list = get_testcase_yaml('./data/loginName.yaml')
-    RequestBase().specification_yaml(login_info_list[0])
+    RequestBase().specification_yaml(login_info_list[0][0],login_info_list[0][1])
 
 
 @pytest.fixture(scope='session', autouse=True)

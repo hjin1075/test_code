@@ -22,7 +22,7 @@ REPORT_TYPE = 'allure'
 FILE_PATH = {
     'CONFIG': os.path.join(DIR_BASE, 'conf/config.ini'),
     'LOG': os.path.join(DIR_BASE, 'logs'),
-    'YAML': os.path.join(DIR_BASE),
+    'YAML': os.path.join(DIR_BASE, 'testcase'),
     'TEMP': os.path.join(DIR_BASE, 'report/temp'),
     'TMR': os.path.join(DIR_BASE, 'report/tmreport'),
     'EXTRACT': os.path.join(DIR_BASE, 'extract.yaml'),

@@ -16,9 +16,18 @@ def get_testcase_yaml(file):
     """
     # Loader=yaml.FullLoader表示加载完整的YAML语言，避免任意代码执行，无此参数控制台报Warning
     try:
+        testcase_list = []
         with open(file, 'r', encoding='utf-8') as f:
-            yaml_data = yaml.safe_load(f)
-            return yaml_data
+            data = yaml.safe_load(f) # 获取到了yaml的全部数据
+            if len(data) <= 1:
+                yaml_data = data[0]
+                base_info = yaml_data.get('baseInfo')
+                for ts in yaml_data.get('testCase'):
+                    params = [base_info,ts]
+                    testcase_list.append(params)
+                return testcase_list
+            else:
+                return data
     except Exception:
         logs.error(str(traceback.format_exc()))
         logs.error(f'请检查【{file}】文件的数据格式是否正确！')
@@ -134,3 +143,7 @@ class ReadYamlData:
         for da in yaml_data:
             data_list.append(da)
         return data_list
+
+
+if __name__ == '__main__':
+    print(get_testcase_yaml('../testcase/debugApi/addUser.yaml'))
